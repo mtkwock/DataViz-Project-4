@@ -1,0 +1,209 @@
+
+<!DOCTYPE html>
+<html>
+  
+  <head>
+    
+    <meta charset="utf-8">
+    <title>Mortality Demo</title>
+
+    <!-- load D3 library -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js" charset="utf-8"></script>
+
+    <style>
+    </style>
+
+  </head>
+  
+  <body>
+
+
+    <div>
+      <svg id="viz" height="500" width="800" style="border: 1px solid grey;">
+      </svg>
+    </div>
+
+    <script>
+
+
+/*
+ * Demo: Mortality 2008/2013
+ * 
+ */
+
+
+/*
+ * Call run when the page finishes loading
+ *
+ */
+      
+window.addEventListener("load",run);
+
+
+function run () {
+    var svg = d3.select("#viz");
+    svg.append("text")
+	.attr("id","loading")
+	.attr("x",+svg.attr("width")/2)
+	.attr("y",+svg.attr("height")/2)
+	.attr("dy","0.35em")
+	.style("text-anchor","middle")
+	.text("loading data...");
+
+    getData("",function(data) {
+      createView(data) });
+}
+
+
+/*
+ * Function for getting the total from the
+ * data for a given cause and a given year
+ * (returns 0 if there's no such entry in
+ * the data)
+ * 
+ */
+
+function getTotal (data,cause,year) {
+    if (cause in data) { 
+	if (year in data[cause]) {
+	    if (data[cause][year].length > 0) { 
+		return data[cause][year][0].total;
+	    }
+	}
+    }
+    return 0;
+}
+
+
+/* 
+ * Create a simple visual representation
+ * of the data
+ *
+ */
+
+function createView (data) {
+    
+    // first, sort the data by 2013 numbers
+
+    var causes = Object.keys(data);
+    causes.sort(function(a,b) { return d3.descending(getTotal(data,a,"2013"),
+						     getTotal(data,b,"2013")); })
+
+    max2013 = d3.max(causes.map(function(d) { return getTotal(data,d,"2013"); }));
+    max2008 = d3.max(causes.map(function(d) { return getTotal(data,d,"2008"); }));
+
+    var svg = d3.select("#viz");
+    
+    var y = d3.scale.linear()
+	.domain([0,Math.max(max2008,max2013)])
+	.range([+svg.attr("height")-10,10]);
+
+    var g = svg.selectAll("g")
+	.data(causes)
+	.enter()
+	.append("g")
+
+    // note: the width attribute holds strings
+    var x2008 = +svg.attr("width")*1/5;
+    var x2013 = +svg.attr("width")*3/5;
+
+    var y2008 = function(d) { return y(getTotal(data,d,"2008")); };
+    var y2013 = function(d) { return y(getTotal(data,d,"2013")); };
+
+    g.append("circle")
+	.attr("cx",x2008)
+	.attr("cy",y2008)
+	.attr("r","5")
+	.style("fill","red")
+	.style("stroke","none");
+
+    g.append("circle")
+	.attr("cx",x2013)
+	.attr("cy",y2013)
+	.attr("r","5")
+	.style("fill","red")
+	.style("stroke","none");
+
+    g.append("line")
+	.attr("x1",x2008)
+	.attr("y1",y2008)
+	.attr("x2",x2013)
+	.attr("y2",y2013)
+	.style("stroke","red")
+	.style("stroke-width","6px");
+
+    g.on("mouseover",function (d,i) {  
+	d3.select(this).select("line").style("stroke","blue");
+	d3.select(this)
+	    .append("text")
+	    .attr("class","label")
+	    .attr("x",+svg.attr("width")*3/5+20)
+	    .attr("y",function(d) { return y(getTotal(data,d,"2013")); })
+	    .attr("dy","0.35em")
+	    .style("stroke","black")
+	    .style("text-anchor","start")
+	    .text(function(d) { return CAUSE[d]; }) })
+	.on("mouseout",function() { 
+	d3.select(this).select("line").style("stroke","red");
+	    d3.selectAll(".label").remove();
+	});
+}
+
+
+
+/*
+ * Convert a cause code to text
+ *
+ */
+
+var EDUCATION = {
+  "0": "No formal education",
+  "1": "1 Year of elementary school",
+  "2": "2 Years of elementary school",
+  "3": "3 Years of elementary school",
+  "4": "4 Years of elementary school",
+  "5": "5 Years of elementary school",
+  "6": "6 Years of elementary school",
+  "7": "7 Years of elementary school",
+  "8": "8 Years of elementary school",
+  "9": "1 year of high school",
+  "10": "2 years of high school",
+  "11": "3 years of high school",
+  "12": "4 years of high school",
+  "13": "1 year of college",
+  "14": "2 years of college",
+  "15": "3 years of college",
+  "16": "4 years of college",
+  "17": "5 or more years of college",
+  "": "Not Specified"
+}
+
+/*
+ * Pulls the data for a given gender
+ * (can be empty)
+ * 
+ */
+
+function getData (gender,f) {
+
+    d3.json("data")
+	.header("Content-Type", "application/x-www-form-urlencoded")
+	.get(
+	     function(error,data) {
+		 if (error) {
+		     d3.select("#loading").remove();
+		     console.log(error);
+		 } else {
+		     d3.select("#loading").remove();
+		     console.log(" data =", data);
+		     f(data);
+		 }
+	     });
+}
+      
+    </script>
+    
+  </body>
+  
+</html>
